@@ -12,12 +12,12 @@ pub struct LSystem {
 }
 
 impl LSystem {
-    pub fn new(start: String, rules: HashMap<char, String>, length: f32, angle: f32) -> LSystem {
+    pub fn new(start: &str, rules: HashMap<char, String>, length: f32, angle: f32) -> LSystem {
         LSystem {
-            start,
+            start: start.to_string(),
             rules,
             length,
-            angle
+            angle,
         }
     }
 
@@ -42,7 +42,7 @@ impl LSystem {
         for c in input.chars() {
             match c {
                 c if self.rules.contains_key(&c) => res.push_str(self.rules.get(&c).unwrap()),
-                _ => res.push(c)
+                _ => res.push(c),
             }
         }
         res

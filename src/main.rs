@@ -8,6 +8,7 @@ mod lsystem;
 
 fn main() {
     nannou::app(model)
+        .loop_mode(LoopMode::loop_once())
         .update(update)
         .simple_window(view)
         .run();
@@ -28,35 +29,52 @@ fn view(app: &App, _model: &Model, frame: Frame){
     let draw = app.draw();
 
     let mut koch = LSystem::new(
-        "F".to_string(), 
+        "F",
         HashMap::from([
             ('F', "F+F-F-F+F".to_string())
         ]), 
-        30.0, 
+        10.0,
         90.0
     );
 
     let mut sierpinski = LSystem::new(
-        "F-G-G".to_string(),
+        "F-G-G",
         HashMap::from([
             ('F', "F-G+F+G-F".to_string()),
             ('G', "GG".to_string()),
         ]), 
-        50.0, 
+        3.0,
         120.0
     );
 
-    draw.polyline()
-        .weight(2.0)
-        .color(BLUE)
-        .points(koch.draw(3))
-        .x(-500.0);
+    let mut dragon = LSystem::new(
+        "F",
+        HashMap::from([
+            ('F', "F+G".to_string()),
+            ('G', "F-G".to_string()),
+        ]),
+        10.0,
+        90.0
+    );
 
     draw.polyline()
-        .weight(2.0)
+        .weight(1.0)
+        .color(BLUE)
+        .points(koch.draw(7))
+        .x_y(-500.0, -300.0);
+
+    draw.polyline()
+        .weight(1.0)
         .color(GREEN)
-        .points(sierpinski.draw(3))
-        .x(-500.0);
+        .points(sierpinski.draw(7))
+        .x_y(-500.0, 300.0);
+
+    draw.polyline()
+        .weight(1.5)
+        .color(PURPLE)
+        .points(dragon.draw(13))
+        .x_y(-300.0, -100.0)
+        .rotate(180.0.to_radians());
     
     draw.to_frame(app, &frame).unwrap();
 }
