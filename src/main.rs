@@ -13,7 +13,15 @@ struct Settings {
     lsystem: LSystem,
     level: i32,
     speed: f32,
+    angle: f32,
+    length: u32,
     animate_angle: bool,
+}
+
+struct LSystemInput {
+    variables: Vec<char>,
+    rules: Vec<(char, String)>,
+    start: String,
 }
 
 struct Drag {
@@ -25,6 +33,7 @@ struct Model {
     drag_event: Drag,
     settings: Settings,
     egui: Egui,
+    lsys_input: LSystemInput,
 }
 
 fn main() {
@@ -67,8 +76,18 @@ fn model(app: &App) -> Model {
             lsystem: dragon,
             level: 10,
             speed: 5.0,
+            angle: 90.0,
+            length: 10,
             animate_angle: false,
         },
+        lsys_input: LSystemInput {
+            start: "F".to_string(),
+            rules: vec![
+                ('F', "F+G".to_string()),
+                ('G', "F-G".to_string()),
+            ],
+            variables: vec!['F', 'G'],
+        }
     }
 }
 
@@ -84,7 +103,7 @@ fn update(app: &App, model: &mut Model, _update: Update) {
 
     if settings.animate_angle {
         let sine = (app.time / map_range(settings.speed, 1.0, 10.0, 5.0, 1.0)).sin();
-        settings.lsystem.angle = map_range(sine, -1.0, 1.0, 60.0, 100.0);
+        settings.angle = map_range(sine, -1.0, 1.0, 60.0, 100.0);
     }
 
     window.show(&ctx, |ui| {
@@ -94,11 +113,11 @@ fn update(app: &App, model: &mut Model, _update: Update) {
         });
         ui.horizontal(|ui| {
             ui.label("length: ");
-            ui.add(egui::Slider::new(&mut settings.lsystem.length, 0..=100));
+            ui.add(egui::Slider::new(&mut settings.length, 0..=100));
         });
         ui.horizontal(|ui| {
             ui.label("angle: ");
-            ui.add(egui::Slider::new(&mut settings.lsystem.angle, 0.0..=180.0)
+            ui.add(egui::Slider::new(&mut settings.angle, 0.0..=180.0)
                 .suffix("°")
                 .custom_formatter(|n, _| {
                     format!("{:>3.0}", n)
@@ -120,6 +139,20 @@ fn update(app: &App, model: &mut Model, _update: Update) {
             }
             if ui.button("Recenter").clicked() {
                 settings.offset = pt2(0.0, 0.0);
+            }
+        });
+
+        ui.horizontal(|ui| {
+            ui.label("Start: ");
+            ui.text_edit_singleline(&mut model.lsys_input.start);
+        });
+
+        ui.vertical(|ui| {
+            for (key, val) in model.lsys_input.rules.iter_mut() {
+                ui.horizontal(|ui| {
+                    ui.label(format!("{key}"));
+                    ui.text_edit_singleline(val);
+                });
             }
         });
     });
@@ -165,7 +198,18 @@ fn view(app: &App, model: &Model, frame: Frame){
     frame.clear(WHITE);
 
     let draw = app.draw();
-    let lsystem = &model.settings.lsystem;
+    let mut rules = HashMap::new();
+
+    model.lsys_input.rules.iter().for_each(|(k, v)| {
+        rules.insert(*k, v.to_string());
+    });
+
+    let lsystem = LSystem::new(
+        &model.lsys_input.start,
+        rules,
+        model.settings.length,
+        model.settings.angle,
+    );
 
     draw.polyline()
         .weight(1.0)

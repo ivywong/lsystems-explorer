@@ -5,8 +5,8 @@ use nannou::glam::Vec2;
 use crate::turtle::Turtle;
 
 pub struct LSystem {
-    start: String,
-    rules: HashMap<char, String>,
+    pub start: String,
+    pub rules: HashMap<char, String>,
     pub length: u32,
     pub angle: f32,
 }
@@ -59,7 +59,7 @@ impl LSystem {
                 '-' => turtle.right(self.angle),
                 '[' => turtle.push(),
                 ']' => turtle.pop(),
-                _ => println!("Malformed input: {}, {}", input, c),
+                _ => println!("Malformed input: {}", c),
             }
         }
         points
