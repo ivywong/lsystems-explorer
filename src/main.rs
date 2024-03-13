@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use lsystem::LSystem;
 use nannou::prelude::*;
-use nannou_egui::{self, egui, Egui};
+use nannou_egui::{self, egui::{self, Align2}, Egui};
 
 mod turtle;
 mod lsystem;
@@ -10,6 +10,8 @@ mod lsystem;
 struct Settings {
     scale: f32,
     offset: Vec2,
+    lsystem: LSystem,
+    level: i32,
 }
 
 struct Drag {
@@ -25,7 +27,6 @@ struct Model {
 
 fn main() {
     nannou::app(model)
-        // .loop_mode(LoopMode::loop_once())
         .update(update)
         .run();
 }
@@ -37,9 +38,20 @@ fn model(app: &App) -> Model {
         .raw_event(raw_window_event)
         .build()
         .unwrap();
+
     let window = &app.window(window_id).unwrap();
 
     let egui = Egui::from_window(&window);
+    
+    let dragon = LSystem::new(
+        "F",
+        HashMap::from([
+            ('F', "F+G".to_string()),
+            ('G', "F-G".to_string()),
+        ]),
+        10.0,
+        90.0
+    );
 
     Model {
         egui,
@@ -50,6 +62,8 @@ fn model(app: &App) -> Model {
         settings: Settings {
             scale: 1.0,
             offset: pt2(0.0, 0.0),
+            lsystem: dragon,
+            level: 10,
         },
     }
 }
@@ -61,7 +75,14 @@ fn update(_app: &App, model: &mut Model, _update: Update) {
     egui.set_elapsed_time(_update.since_start);
 
     let ctx = egui.begin_frame();
-    egui::Window::new("Settings").show(&ctx, |ui| {
+    let window = egui::Window::new("Settings")
+        .anchor(Align2::LEFT_TOP, [5.0, 5.0]);
+
+    window.show(&ctx, |ui| {
+        ui.horizontal(|ui| {
+            ui.label("n = ");
+            ui.add(egui::Slider::new(&mut settings.level, 0..=20));
+        });
         if ui.button(format!("Reset Scale ({:.1})", settings.scale)).clicked() {
             settings.scale = 1.0;
         }
@@ -85,8 +106,10 @@ fn event(app: &App, model: &mut Model, event: WindowEvent) {
         MousePressed(_button) => {
             match _button {
                 MouseButton::Left => {
-                    model.drag_event.is_dragging = true;
-                    model.drag_event.start_pos = pt2(app.mouse.x, app.mouse.y);
+                    if !model.egui.ctx().is_pointer_over_area() {
+                        model.drag_event.is_dragging = true;
+                        model.drag_event.start_pos = pt2(app.mouse.x, app.mouse.y);
+                    }
                 }
                 _ => {}
             }
@@ -109,53 +132,12 @@ fn view(app: &App, model: &Model, frame: Frame){
     frame.clear(WHITE);
 
     let draw = app.draw();
-
-    let mut koch = LSystem::new(
-        "F",
-        HashMap::from([
-            ('F', "F+F-F-F+F".to_string())
-        ]), 
-        10.0 * model.settings.scale,
-        90.0
-    );
-
-    let mut sierpinski = LSystem::new(
-        "F-G-G",
-        HashMap::from([
-            ('F', "F-G+F+G-F".to_string()),
-            ('G', "GG".to_string()),
-        ]), 
-        3.0 * model.settings.scale,
-        120.0
-    );
-
-    let mut dragon = LSystem::new(
-        "F",
-        HashMap::from([
-            ('F', "F+G".to_string()),
-            ('G', "F-G".to_string()),
-        ]),
-        10.0 * model.settings.scale,
-        90.0
-    );
+    let lsystem = &model.settings.lsystem;
 
     draw.polyline()
         .weight(1.0)
         .color(BLUE)
-        .points(koch.draw(7))
-        .xy(model.settings.offset);
-
-    draw.polyline()
-        .weight(1.0)
-        .color(GREEN)
-        .points(sierpinski.draw(7))
-        .xy(model.settings.offset);
-
-    draw.polyline()
-        .weight(1.5)
-        .color(PURPLE)
-        .points(dragon.draw(13))
-        .rotate(180.0.to_radians())
+        .points(lsystem.draw(model.settings.level, model.settings.scale))
         .xy(model.settings.offset);
     
     draw.to_frame(app, &frame).unwrap();

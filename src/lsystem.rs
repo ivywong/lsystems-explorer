@@ -21,7 +21,7 @@ impl LSystem {
         }
     }
 
-    pub fn draw(&mut self, n: i32) -> Vec<Vec2> {
+    pub fn draw(&self, n: i32, scale: f32) -> Vec<Vec2> {
         let mut command = self.start.to_owned();
 
         // println!("\n0: {}", command);
@@ -31,7 +31,7 @@ impl LSystem {
             // println!("{}: {}", i, command);
         }
 
-        let points: Vec<Vec2> = self.parse(&command);
+        let points: Vec<Vec2> = self.calc_points(&command, scale);
         // println!("{:?}", points);
 
         points
@@ -48,13 +48,13 @@ impl LSystem {
         res
     }
 
-    pub fn parse(&mut self, input: &String) -> Vec<Vec2> {
+    pub fn calc_points(&self, input: &String, scale: f32) -> Vec<Vec2> {
         let mut turtle = Turtle::new();
         let mut points = vec![turtle.curr()];
 
         for c in input.chars() {
             match c {
-                c if self.rules.contains_key(&c) => points.push(turtle.fd(self.length)),
+                c if self.rules.contains_key(&c) => points.push(turtle.fd(self.length * scale)),
                 '+' => turtle.left(self.angle),
                 '-' => turtle.right(self.angle),
                 '[' => turtle.push(),
