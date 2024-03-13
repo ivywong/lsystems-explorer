@@ -7,12 +7,12 @@ use crate::turtle::Turtle;
 pub struct LSystem {
     start: String,
     rules: HashMap<char, String>,
-    length: f32,
-    angle: f32,
+    pub length: u32,
+    pub angle: f32,
 }
 
 impl LSystem {
-    pub fn new(start: &str, rules: HashMap<char, String>, length: f32, angle: f32) -> LSystem {
+    pub fn new(start: &str, rules: HashMap<char, String>, length: u32, angle: f32) -> LSystem {
         LSystem {
             start: start.to_string(),
             rules,
@@ -38,7 +38,7 @@ impl LSystem {
     }
 
     pub fn rewrite(&self, input: &String) -> String {
-        let mut res = "".to_owned();
+        let mut res = String::from("");
         for c in input.chars() {
             match c {
                 c if self.rules.contains_key(&c) => res.push_str(self.rules.get(&c).unwrap()),
@@ -54,7 +54,7 @@ impl LSystem {
 
         for c in input.chars() {
             match c {
-                c if self.rules.contains_key(&c) => points.push(turtle.fd(self.length * scale)),
+                c if self.rules.contains_key(&c) => points.push(turtle.fd(self.length as f32 * scale)),
                 '+' => turtle.left(self.angle),
                 '-' => turtle.right(self.angle),
                 '[' => turtle.push(),

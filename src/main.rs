@@ -12,6 +12,8 @@ struct Settings {
     offset: Vec2,
     lsystem: LSystem,
     level: i32,
+    speed: f32,
+    animate_angle: bool,
 }
 
 struct Drag {
@@ -49,7 +51,7 @@ fn model(app: &App) -> Model {
             ('F', "F+G".to_string()),
             ('G', "F-G".to_string()),
         ]),
-        10.0,
+        10,
         90.0
     );
 
@@ -64,11 +66,13 @@ fn model(app: &App) -> Model {
             offset: pt2(0.0, 0.0),
             lsystem: dragon,
             level: 10,
+            speed: 5.0,
+            animate_angle: false,
         },
     }
 }
 
-fn update(_app: &App, model: &mut Model, _update: Update) {
+fn update(app: &App, model: &mut Model, _update: Update) {
     let egui = &mut model.egui;
     let settings = &mut model.settings;
 
@@ -78,11 +82,38 @@ fn update(_app: &App, model: &mut Model, _update: Update) {
     let window = egui::Window::new("Settings")
         .anchor(Align2::LEFT_TOP, [5.0, 5.0]);
 
+    if settings.animate_angle {
+        let sine = (app.time / map_range(settings.speed, 1.0, 10.0, 5.0, 1.0)).sin();
+        settings.lsystem.angle = map_range(sine, -1.0, 1.0, 60.0, 100.0);
+    }
+
     window.show(&ctx, |ui| {
         ui.horizontal(|ui| {
             ui.label("n = ");
             ui.add(egui::Slider::new(&mut settings.level, 0..=20));
         });
+        ui.horizontal(|ui| {
+            ui.label("length: ");
+            ui.add(egui::Slider::new(&mut settings.lsystem.length, 0..=100));
+        });
+        ui.horizontal(|ui| {
+            ui.label("angle: ");
+            ui.add(egui::Slider::new(&mut settings.lsystem.angle, 0.0..=180.0)
+                .suffix("°")
+                .custom_formatter(|n, _| {
+                    format!("{:>3.0}", n)
+                })
+            );
+            ui.checkbox(&mut settings.animate_angle, "animate?");
+        });
+        
+        ui.add_enabled_ui(settings.animate_angle, |ui| {
+            ui.horizontal(|ui| {
+                ui.label("animation speed: ");
+                ui.add(egui::Slider::new(&mut settings.speed, 0.0..=10.0));
+            });
+        });
+
         if ui.button(format!("Reset Scale ({:.1})", settings.scale)).clicked() {
             settings.scale = 1.0;
         }
