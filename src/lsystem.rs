@@ -17,18 +17,18 @@ impl LSystem {
             start: start.to_string(),
             rules,
             length,
-            angle,
+            angle
         }
     }
 
     pub fn draw(&mut self, n: i32) -> Vec<Vec2> {
         let mut command = self.start.to_owned();
 
-        println!("\n0: {}", command);
+        // println!("\n0: {}", command);
 
         for i in 1..n + 1 {
             command = self.rewrite(&command);
-            println!("{}: {}", i, command);
+            // println!("{}: {}", i, command);
         }
 
         let points: Vec<Vec2> = self.parse(&command);
@@ -42,7 +42,7 @@ impl LSystem {
         for c in input.chars() {
             match c {
                 c if self.rules.contains_key(&c) => res.push_str(self.rules.get(&c).unwrap()),
-                _ => res.push(c),
+                _ => res.push(c)
             }
         }
         res
