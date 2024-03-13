@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use lsystem::LSystem;
 use nannou::prelude::*;
-use nannou_egui::{self, egui::{self, Align2}, Egui};
+use nannou_egui::{self, egui::{self, Align2, ComboBox}, Egui};
 
 mod turtle;
 mod lsystem;
@@ -10,18 +10,26 @@ mod lsystem;
 struct Settings {
     scale: f32,
     offset: Vec2,
-    lsystem: LSystem,
-    level: i32,
+    level: u32,
     speed: f32,
     angle: f32,
     length: u32,
     animate_angle: bool,
+    default_preset: String,
 }
 
+#[derive(Clone)]
 struct LSystemInput {
     variables: Vec<char>,
     rules: Vec<(char, String)>,
     start: String,
+}
+
+struct Preset {
+    lsystem: LSystemInput,
+    level: u32,
+    angle: f32,
+    length: u32,
 }
 
 struct Drag {
@@ -34,6 +42,7 @@ struct Model {
     settings: Settings,
     egui: Egui,
     lsys_input: LSystemInput,
+    presets: HashMap<String, Preset>,
 }
 
 fn main() {
@@ -53,16 +62,36 @@ fn model(app: &App) -> Model {
     let window = &app.window(window_id).unwrap();
 
     let egui = Egui::from_window(&window);
-    
-    let dragon = LSystem::new(
-        "F",
-        HashMap::from([
-            ('F', "F+G".to_string()),
-            ('G', "F-G".to_string()),
-        ]),
-        10,
-        90.0
-    );
+
+    let presets: HashMap<String, Preset> = HashMap::from([
+        ("sierpinsky".to_string(), Preset {
+            level: 6,
+            length: 3,
+            angle: 120.0,
+            lsystem: LSystemInput {
+            start: "F-G-G".to_string(),
+            rules: vec![
+                ('F', "F-G+F+G-F".to_string()),
+                ('G', "GG".to_string()),
+            ],
+            variables: vec!['F', 'G'],
+        }}),
+        ("dragon".to_string(), Preset {
+            level: 12,
+            length: 10,
+            angle: 90.0,
+            lsystem: LSystemInput {
+            start: "F".to_string(),
+            rules: vec![
+                ('F', "F+G".to_string()),
+                ('G', "F-G".to_string()),
+            ],
+            variables: vec!['F', 'G'],
+        }}),
+    ]);
+
+    let default_preset = "dragon".to_string();
+    let preset = presets.get(&default_preset).unwrap();
 
     Model {
         egui,
@@ -73,21 +102,15 @@ fn model(app: &App) -> Model {
         settings: Settings {
             scale: 1.0,
             offset: pt2(0.0, 0.0),
-            lsystem: dragon,
-            level: 10,
+            level: preset.level,
             speed: 5.0,
-            angle: 90.0,
-            length: 10,
+            angle: preset.angle,
+            length: preset.length,
             animate_angle: false,
+            default_preset,
         },
-        lsys_input: LSystemInput {
-            start: "F".to_string(),
-            rules: vec![
-                ('F', "F+G".to_string()),
-                ('G', "F-G".to_string()),
-            ],
-            variables: vec!['F', 'G'],
-        }
+        lsys_input: preset.lsystem.clone(),
+        presets,
     }
 }
 
@@ -107,6 +130,23 @@ fn update(app: &App, model: &mut Model, _update: Update) {
     }
 
     window.show(&ctx, |ui| {
+        ui.horizontal(|ui| {
+            ui.label("Preset: ");
+            ComboBox::from_label(format!("{}", &settings.default_preset))
+            .show_ui(ui, |ui| {
+                for (key, _) in model.presets.iter() {
+                    ui.selectable_value(&mut settings.default_preset, key.clone(), key);
+                }
+            });
+            if ui.button("load preset").clicked() {
+                let preset = model.presets.get(&settings.default_preset).unwrap();
+                model.lsys_input = preset.lsystem.clone();
+                settings.angle = preset.angle;
+                settings.length = preset.length;
+                settings.level = preset.level;
+            }
+        });
+
         ui.horizontal(|ui| {
             ui.label("n = ");
             ui.add(egui::Slider::new(&mut settings.level, 0..=20));

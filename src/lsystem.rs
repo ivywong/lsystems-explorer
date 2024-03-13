@@ -21,7 +21,7 @@ impl LSystem {
         }
     }
 
-    pub fn draw(&self, n: i32, scale: f32) -> Vec<Vec2> {
+    pub fn draw(&self, n: u32, scale: f32) -> Vec<Vec2> {
         let mut command = self.start.to_owned();
 
         // println!("\n0: {}", command);
