@@ -114,12 +114,14 @@ fn update(app: &App, model: &mut Model, _update: Update) {
             });
         });
 
-        if ui.button(format!("Reset Scale ({:.1})", settings.scale)).clicked() {
-            settings.scale = 1.0;
-        }
-        if ui.button("Recenter").clicked() {
-            settings.offset = pt2(0.0, 0.0);
-        }
+        ui.horizontal(|ui| {
+            if ui.button(format!("Reset Scale ({:.1})", settings.scale)).clicked() {
+                settings.scale = 1.0;
+            }
+            if ui.button("Recenter").clicked() {
+                settings.offset = pt2(0.0, 0.0);
+            }
+        });
     });
 }
 
