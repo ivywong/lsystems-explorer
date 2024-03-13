@@ -26,7 +26,7 @@ impl LSystem {
 
         // println!("\n0: {}", command);
 
-        for i in 1..n + 1 {
+        for _ in 1..n + 1 {
             command = self.rewrite(&command);
             // println!("{}: {}", i, command);
         }

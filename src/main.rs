@@ -2,12 +2,14 @@ use std::collections::HashMap;
 
 use lsystem::LSystem;
 use nannou::prelude::*;
+use nannou_egui::{self, egui, Egui};
 
 mod turtle;
 mod lsystem;
 
 struct Settings {
     scale: f32,
+    offset: Vec2,
 }
 
 struct Drag {
@@ -16,9 +18,9 @@ struct Drag {
 }
 
 struct Model {
-    offset: Vec2,
     drag_event: Drag,
-    settings: Settings
+    settings: Settings,
+    egui: Egui,
 }
 
 fn main() {
@@ -29,25 +31,44 @@ fn main() {
 }
 
 fn model(app: &App) -> Model {
-    app.new_window()
+    let window_id = app.new_window()
         .event(event)
         .view(view)
+        .raw_event(raw_window_event)
         .build()
         .unwrap();
+    let window = &app.window(window_id).unwrap();
+
+    let egui = Egui::from_window(&window);
 
     Model {
-        offset: pt2(0.0, 0.0),
+        egui,
         drag_event: Drag {
             is_dragging: false,
             start_pos: pt2(0.0, 0.0),
         },
         settings: Settings {
             scale: 1.0,
-        }
+            offset: pt2(0.0, 0.0),
+        },
     }
 }
 
-fn update(_app: &App, _model: &mut Model, _update: Update) {
+fn update(_app: &App, model: &mut Model, _update: Update) {
+    let egui = &mut model.egui;
+    let settings = &mut model.settings;
+
+    egui.set_elapsed_time(_update.since_start);
+
+    let ctx = egui.begin_frame();
+    egui::Window::new("Settings").show(&ctx, |ui| {
+        if ui.button(format!("Reset Scale ({:.1})", settings.scale)).clicked() {
+            settings.scale = 1.0;
+        }
+        if ui.button("Recenter").clicked() {
+            settings.offset = pt2(0.0, 0.0);
+        }
+    });
 }
 
 fn event(app: &App, model: &mut Model, event: WindowEvent) {
@@ -76,7 +97,7 @@ fn event(app: &App, model: &mut Model, event: WindowEvent) {
         }
         MouseMoved(_pos) => {
             if model.drag_event.is_dragging {
-                model.offset += _pos - model.drag_event.start_pos;
+                model.settings.offset += _pos - model.drag_event.start_pos;
                 model.drag_event.start_pos = _pos;
             }
         }
@@ -122,20 +143,26 @@ fn view(app: &App, model: &Model, frame: Frame){
         .weight(1.0)
         .color(BLUE)
         .points(koch.draw(7))
-        .xy(model.offset);
+        .xy(model.settings.offset);
 
     draw.polyline()
         .weight(1.0)
         .color(GREEN)
         .points(sierpinski.draw(7))
-        .xy(model.offset);
+        .xy(model.settings.offset);
 
     draw.polyline()
         .weight(1.5)
         .color(PURPLE)
         .points(dragon.draw(13))
         .rotate(180.0.to_radians())
-        .xy(model.offset);
+        .xy(model.settings.offset);
     
     draw.to_frame(app, &frame).unwrap();
+    model.egui.draw_to_frame(&frame).unwrap();
+}
+
+fn raw_window_event(_app: &App, model: &mut Model, event: &nannou::winit::event::WindowEvent) {
+    // Let egui handle things like keyboard and mouse input.
+    model.egui.handle_raw_event(event);
 }
