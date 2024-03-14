@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 use lsystem::LSystem;
-use nannou::prelude::*;
-use nannou_egui::{self, egui::{self, Align2, ComboBox}, Egui};
+use nannou::{color::encoding::Srgb, prelude::*};
+use nannou_egui::{self, egui::{self, epaint::Shadow, Align2, Color32, ComboBox, Rounding, Stroke}, Egui};
 
 mod turtle;
 mod lsystem;
@@ -16,6 +16,7 @@ struct Settings {
     angle: f32,
     length: u32,
     animate_angle: bool,
+    clear_bg: bool,
     default_preset: String,
 }
 
@@ -48,7 +49,7 @@ struct Model {
 
 fn main() {
     nannou::app(model)
-        .loop_mode(LoopMode::rate_fps(60.0))
+        .loop_mode(LoopMode::rate_fps(90.0))
         .update(update)
         .run();
 }
@@ -134,6 +135,7 @@ fn model(app: &App) -> Model {
             angle: preset.angle,
             length: preset.length,
             animate_angle: false,
+            clear_bg: true,
             default_preset,
         },
         lsys_input: preset.lsystem.clone(),
@@ -149,7 +151,13 @@ fn update(app: &App, model: &mut Model, _update: Update) {
 
     let ctx = egui.begin_frame();
     let window = egui::Window::new("L-system Explorer")
-        .anchor(Align2::LEFT_TOP, [5.0, 5.0]);
+        .frame(egui::Frame::none()
+            .fill(Color32::from_rgb(10,10, 10))
+            .rounding(Rounding::same(5.0))
+            .multiply_with_opacity(0.9)
+            .inner_margin(10.0)
+            .shadow(Shadow::NONE))
+        .anchor(Align2::LEFT_TOP, [10.0, 10.0]);
 
     if settings.animate_angle {
         let sine = (app.time / map_range(settings.speed, 1.0, 10.0, 5.0, 1.0)).sin();
@@ -157,10 +165,22 @@ fn update(app: &App, model: &mut Model, _update: Update) {
     }
 
     window.show(&ctx, |ui| {
+        ui.visuals_mut().extreme_bg_color = Color32::from_rgb(5, 5, 5);
+        ui.visuals_mut().widgets.active.bg_fill = Color32::from_rgb(5, 5, 5);
+        ui.visuals_mut().widgets.active.weak_bg_fill = Color32::from_rgb(60, 5, 20);
+        ui.visuals_mut().widgets.open.bg_fill = Color32::from_rgb(5, 5, 5);
+        ui.visuals_mut().widgets.open.weak_bg_fill = Color32::from_rgb(5, 5, 5);
+        ui.visuals_mut().widgets.hovered.bg_fill = Color32::from_rgb(60, 5, 20);
+        ui.visuals_mut().widgets.hovered.weak_bg_fill = Color32::from_rgb(60, 5, 20);
+        ui.visuals_mut().widgets.inactive.bg_fill = Color32::from_rgb(5, 5, 5);
+        ui.visuals_mut().widgets.inactive.weak_bg_fill = Color32::from_rgb(5, 5, 5);
+        ui.visuals_mut().window_fill = Color32::from_rgb(60, 5, 20);
+
         ui.horizontal(|ui| {
             ui.label("Preset: ");
             ComboBox::from_label(format!("{}", &settings.default_preset))
             .show_ui(ui, |ui| {
+                ui.visuals_mut().selection.bg_fill = Color32::from_rgb(60, 5, 20);
                 for (key, _) in model.presets.iter() {
                     ui.selectable_value(&mut settings.default_preset, key.clone(), key);
                 }
@@ -237,6 +257,7 @@ fn update(app: &App, model: &mut Model, _update: Update) {
             if ui.button("Recenter").clicked() {
                 settings.offset = pt2(0.0, 0.0);
             }
+            ui.checkbox(&mut settings.clear_bg, "clear bg?");
         });
     });
 }
@@ -278,7 +299,9 @@ fn event(app: &App, model: &mut Model, event: WindowEvent) {
 }
 
 fn view(app: &App, model: &Model, frame: Frame){
-    frame.clear(WHITE);
+    if model.settings.clear_bg {
+        frame.clear(BLACK);
+    }
 
     let draw = app.draw();
     let mut rules = HashMap::new();
@@ -297,7 +320,10 @@ fn view(app: &App, model: &Model, frame: Frame){
     for section_points in lsystem.draw(model.settings.level, model.settings.scale) {
         draw.polyline()
         .weight(1.0)
-        .color(PURPLE)
+        .hsv(
+            map_range((app.time / 2.0).sin(), -1.0, 1.0, 0.0, 1.0),
+            map_range((app.time / 3.0).cos(), -1.0, 1.0, 0.5, 1.0), 
+            map_range((app.time * 10.0).sin(), -1.0, 1.0, 0.8, 1.0))
         .points(section_points)
         .xy(model.settings.offset)
         .rotate(model.settings.rotation.to_radians());
