@@ -21,7 +21,7 @@ impl LSystem {
         }
     }
 
-    pub fn draw(&self, n: u32, scale: f32) -> Vec<Vec2> {
+    pub fn draw(&self, n: u32, scale: f32) -> Vec<Vec<Vec2>> {
         let mut command = self.start.to_owned();
 
         // println!("\n0: {}", command);
@@ -31,7 +31,7 @@ impl LSystem {
             // println!("{}: {}", i, command);
         }
 
-        let points: Vec<Vec2> = self.calc_points(&command, scale);
+        let points: Vec<Vec<Vec2>> = self.calc_points(&command, scale);
         // println!("{:?}", points);
 
         points
@@ -48,17 +48,23 @@ impl LSystem {
         res
     }
 
-    pub fn calc_points(&self, input: &String, scale: f32) -> Vec<Vec2> {
+    pub fn calc_points(&self, input: &String, scale: f32) -> Vec<Vec<Vec2>> {
         let mut turtle = Turtle::new();
-        let mut points = vec![turtle.curr()];
+        let mut points = vec![vec![turtle.curr()]];
 
         for c in input.chars() {
             match c {
-                c if self.rules.contains_key(&c) => points.push(turtle.fd(self.length as f32 * scale)),
+                'X' => continue,
+                c if self.rules.contains_key(&c) => {
+                    points.last_mut().unwrap().push(turtle.fd(self.length as f32 * scale))
+                },
                 '+' => turtle.left(self.angle),
                 '-' => turtle.right(self.angle),
                 '[' => turtle.push(),
-                ']' => turtle.pop(),
+                ']' => match turtle.pop() {
+                    Ok(pos) => points.push(vec![pos]),
+                    Err(err) => println!("{}", err),
+                },
                 _ => println!("Malformed input: {}", c),
             }
         }

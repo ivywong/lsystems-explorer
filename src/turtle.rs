@@ -4,28 +4,7 @@ pub struct State {
     head: f32,
 }
 
-impl State {
-    pub fn new(pos: Vec2, head: f32) -> State {
-        State {
-            pos,
-            head
-        }
-    }
-}
-
 pub struct Turtle {
-    /*
-        turtle keeps current state of the pen:
-        - LIFO stack() - position, angle
-            - push()
-            - pop()
-        - current position
-        - current heading
-
-        turtle.fd(100) -> (x, y) -> set and return position
-        turtle.left(120) (deg) -> set heading
-        turtle.right(120) (deg) -> set heading
-     */
     stack: Vec<State>,
     position: Vec2,
     heading: f32, // radians
@@ -52,7 +31,6 @@ impl Turtle {
             self.position.y + (distance * self.heading.sin())
         );
         self.position = new_pos;
-
         new_pos
     }
 
@@ -65,17 +43,22 @@ impl Turtle {
     }
 
     pub fn push(&mut self) {
-        self.stack.push(State::new(self.position, self.heading))
+        self.stack.push(State {
+            pos: self.position,
+            head: self.heading
+        });
     }
 
-    pub fn pop(&mut self) {
+    pub fn pop(&mut self) -> Result<Vec2, &str> {
         let last = self.stack.pop();
         match last {
             Some(State { pos, head }) => {
                 self.position = pos;
                 self.heading = head;
+
+                Ok(self.position)
             },
-            None => println!("Malformed command: nothing to pop!"), 
+            None => Err("Malformed command: nothing to pop!"),
         }
     }
 }

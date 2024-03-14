@@ -47,6 +47,7 @@ struct Model {
 
 fn main() {
     nannou::app(model)
+        .loop_mode(LoopMode::rate_fps(60.0))
         .update(update)
         .run();
 }
@@ -88,9 +89,33 @@ fn model(app: &App) -> Model {
             ],
             variables: vec!['F', 'G'],
         }}),
+        ("plant".to_string(), Preset {
+            level: 6,
+            length: 10,
+            angle: 25.0,
+            lsystem: LSystemInput {
+            start: "X".to_string(),
+            rules: vec![
+                ('X', "F+[[X]-X]-F[-FX]+X".to_string()),
+                ('F', "FF".to_string()),
+            ],
+            variables: vec!['X', 'F'],
+        }}),
+        ("binary tree".to_string(), Preset {
+            level: 1,
+            length: 10,
+            angle: 45.0,
+            lsystem: LSystemInput {
+            start: "A".to_string(),
+            rules: vec![
+                ('A', "B[+A]-A".to_string()),
+                ('B', "BB".to_string()),
+            ],
+            variables: vec!['A', 'B'],
+        }}),
     ]);
 
-    let default_preset = "dragon".to_string();
+    let default_preset = "plant".to_string();
     let preset = presets.get(&default_preset).unwrap();
 
     Model {
@@ -121,7 +146,7 @@ fn update(app: &App, model: &mut Model, _update: Update) {
     egui.set_elapsed_time(_update.since_start);
 
     let ctx = egui.begin_frame();
-    let window = egui::Window::new("Settings")
+    let window = egui::Window::new("L-system Explorer")
         .anchor(Align2::LEFT_TOP, [5.0, 5.0]);
 
     if settings.animate_angle {
@@ -251,11 +276,13 @@ fn view(app: &App, model: &Model, frame: Frame){
         model.settings.angle,
     );
 
-    draw.polyline()
+    for section_points in lsystem.draw(model.settings.level, model.settings.scale) {
+        draw.polyline()
         .weight(1.0)
-        .color(BLUE)
-        .points(lsystem.draw(model.settings.level, model.settings.scale))
+        .color(PURPLE)
+        .points(section_points)
         .xy(model.settings.offset);
+    }
     
     draw.to_frame(app, &frame).unwrap();
     model.egui.draw_to_frame(&frame).unwrap();
