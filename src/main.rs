@@ -9,6 +9,7 @@ mod lsystem;
 
 struct Settings {
     scale: f32,
+    rotation: f32,
     offset: Vec2,
     level: u32,
     speed: f32,
@@ -126,6 +127,7 @@ fn model(app: &App) -> Model {
         },
         settings: Settings {
             scale: 1.0,
+            rotation: 0.0,
             offset: pt2(0.0, 0.0),
             level: preset.level,
             speed: 5.0,
@@ -172,6 +174,24 @@ fn update(app: &App, model: &mut Model, _update: Update) {
             }
         });
 
+        ui.separator();
+
+        ui.horizontal(|ui| {
+            ui.label("Start: ");
+            ui.text_edit_singleline(&mut model.lsys_input.start);
+        });
+
+        ui.vertical(|ui| {
+            for (key, val) in model.lsys_input.rules.iter_mut() {
+                ui.horizontal(|ui| {
+                    ui.label(format!("{key}"));
+                    ui.text_edit_singleline(val);
+                });
+            }
+        });
+
+        ui.separator();
+
         ui.horizontal(|ui| {
             ui.label("n = ");
             ui.add(egui::Slider::new(&mut settings.level, 0..=20));
@@ -198,26 +218,24 @@ fn update(app: &App, model: &mut Model, _update: Update) {
             });
         });
 
+        ui.separator();
+
+        ui.horizontal(|ui| {
+            ui.label("global rotation: ");
+            ui.add(egui::Slider::new(&mut settings.rotation, 0.0..=360.0)
+                .suffix("°")
+                .custom_formatter(|n, _| {
+                    format!("{:>3.0}", n)
+                })
+            );
+        });
+
         ui.horizontal(|ui| {
             if ui.button(format!("Reset Scale ({:.1})", settings.scale)).clicked() {
                 settings.scale = 1.0;
             }
             if ui.button("Recenter").clicked() {
                 settings.offset = pt2(0.0, 0.0);
-            }
-        });
-
-        ui.horizontal(|ui| {
-            ui.label("Start: ");
-            ui.text_edit_singleline(&mut model.lsys_input.start);
-        });
-
-        ui.vertical(|ui| {
-            for (key, val) in model.lsys_input.rules.iter_mut() {
-                ui.horizontal(|ui| {
-                    ui.label(format!("{key}"));
-                    ui.text_edit_singleline(val);
-                });
             }
         });
     });
@@ -281,7 +299,8 @@ fn view(app: &App, model: &Model, frame: Frame){
         .weight(1.0)
         .color(PURPLE)
         .points(section_points)
-        .xy(model.settings.offset);
+        .xy(model.settings.offset)
+        .rotate(model.settings.rotation.to_radians());
     }
     
     draw.to_frame(app, &frame).unwrap();
