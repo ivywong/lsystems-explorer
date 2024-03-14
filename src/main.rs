@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 use lsystem::LSystem;
-use nannou::{color::encoding::Srgb, prelude::*};
-use nannou_egui::{self, egui::{self, epaint::Shadow, Align2, Color32, ComboBox, Rounding, Stroke}, Egui};
+use nannou::prelude::*;
+use nannou_egui::{self, egui::{self, epaint::Shadow, Align2, Color32, ComboBox, RichText, Rounding}, Egui};
 
 mod turtle;
 mod lsystem;
@@ -18,6 +18,7 @@ struct Settings {
     animate_angle: bool,
     clear_bg: bool,
     default_preset: String,
+    variables_buffer: String,
 }
 
 #[derive(Clone)]
@@ -117,7 +118,7 @@ fn model(app: &App) -> Model {
         }}),
     ]);
 
-    let default_preset = "plant".to_string();
+    let default_preset = "dragon".to_string();
     let preset = presets.get(&default_preset).unwrap();
 
     Model {
@@ -137,6 +138,7 @@ fn model(app: &App) -> Model {
             animate_angle: false,
             clear_bg: true,
             default_preset,
+            variables_buffer: String::from(""),
         },
         lsys_input: preset.lsystem.clone(),
         presets,
@@ -197,6 +199,32 @@ fn update(app: &App, model: &mut Model, _update: Update) {
         ui.separator();
 
         ui.horizontal(|ui| {
+            ui.label("Variables: ");
+            ui.horizontal(|ui| {
+                for (idx, v) in model.lsys_input.variables.clone().iter().enumerate() {
+                    let used = model.lsys_input.rules.iter().any(|(key, _)| key == v);
+                    let text_color = if !used {
+                        Color32::DARK_GRAY
+                    } else {
+                        ui.visuals().widgets.inactive.text_color()
+                    };
+                    if ui.button(RichText::new(format!("{v} ×")).color(text_color)).clicked() && !used {
+                        model.lsys_input.variables.remove(idx);
+                    }
+                }
+            });
+            let res = ui.add(egui::TextEdit::singleline(&mut settings.variables_buffer).char_limit(1));
+            if ui.input(|i| i.key_pressed(egui::Key::Enter)) && settings.variables_buffer.len() == 1 {
+                let c = settings.variables_buffer.chars().next().unwrap();
+                if !model.lsys_input.variables.contains(&c) {
+                    model.lsys_input.variables.push(settings.variables_buffer.chars().next().unwrap());
+                }
+                settings.variables_buffer.clear();
+                res.request_focus();
+            }
+        });
+
+        ui.horizontal(|ui| {
             ui.label("Start: ");
             ui.text_edit_singleline(&mut model.lsys_input.start);
         });
@@ -207,6 +235,10 @@ fn update(app: &App, model: &mut Model, _update: Update) {
                     ui.label(format!("{key}"));
                     ui.text_edit_singleline(val);
                 });
+            }
+            if ui.button("+").clicked() {
+                // placeholder
+                model.lsys_input.rules.push(('A', "A".to_string()));
             }
         });
 
