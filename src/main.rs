@@ -7,6 +7,24 @@ use nannou_egui::{self, egui::{self, epaint::Shadow, Align2, Color32, ComboBox, 
 mod turtle;
 mod lsystem;
 
+macro_rules! str {
+    () => {
+        String::new()
+    };
+    ($x:expr $(,)?) => {
+        ToString::to_string(&$x)
+    };
+}
+
+macro_rules! str_tup {
+    () => {
+        (String::new())
+    };
+    ($x:expr, $y:expr) => {
+        (ToString::to_string(&$x), ToString::to_string(&$y))
+    };
+}
+
 struct Settings {
     scale: f32,
     rotation: f32,
@@ -19,12 +37,13 @@ struct Settings {
     clear_bg: bool,
     default_preset: String,
     variables_buffer: String,
+    new_rule_buffer: (String, String),
 }
 
 #[derive(Clone)]
 struct LSystemInput {
-    variables: Vec<char>,
-    rules: Vec<(char, String)>,
+    variables: Vec<String>,
+    rules: Vec<(String, String)>,
     start: String,
 }
 
@@ -75,10 +94,10 @@ fn model(app: &App) -> Model {
             lsystem: LSystemInput {
             start: "F-G-G".to_string(),
             rules: vec![
-                ('F', "F-G+F+G-F".to_string()),
-                ('G', "GG".to_string()),
+                str_tup!("F", "F-G+F+G-F"),
+                str_tup!("G", "GG"),
             ],
-            variables: vec!['F', 'G'],
+            variables: vec!["F".to_string(), 'G'.to_string()],
         }}),
         ("dragon".to_string(), Preset {
             level: 12,
@@ -87,10 +106,10 @@ fn model(app: &App) -> Model {
             lsystem: LSystemInput {
             start: "F".to_string(),
             rules: vec![
-                ('F', "F+G".to_string()),
-                ('G', "F-G".to_string()),
+                str_tup!("F", "F+G"),
+                str_tup!("G", "F-G"),
             ],
-            variables: vec!['F', 'G'],
+            variables: vec![str!('F'), str!('G')],
         }}),
         ("plant".to_string(), Preset {
             level: 6,
@@ -99,10 +118,10 @@ fn model(app: &App) -> Model {
             lsystem: LSystemInput {
             start: "X".to_string(),
             rules: vec![
-                ('X', "F+[[X]-X]-F[-FX]+X".to_string()),
-                ('F', "FF".to_string()),
+                str_tup!("X", "F+[[X]-X]-F[-FX]+X"),
+                str_tup!("F", "FF"),
             ],
-            variables: vec!['X', 'F'],
+            variables: vec![str!('X'), str!('F')],
         }}),
         ("binary tree".to_string(), Preset {
             level: 1,
@@ -111,10 +130,10 @@ fn model(app: &App) -> Model {
             lsystem: LSystemInput {
             start: "A".to_string(),
             rules: vec![
-                ('A', "B[+A]-A".to_string()),
-                ('B', "BB".to_string()),
+                str_tup!("A", "B[+A]-A"),
+                str_tup!("B", "BB"),
             ],
-            variables: vec!['A', 'B'],
+            variables: vec![str!('A'), str!('B')],
         }}),
     ]);
 
@@ -139,6 +158,7 @@ fn model(app: &App) -> Model {
             clear_bg: true,
             default_preset,
             variables_buffer: String::from(""),
+            new_rule_buffer: str_tup!("", ""),
         },
         lsys_input: preset.lsystem.clone(),
         presets,
@@ -216,9 +236,9 @@ fn update(app: &App, model: &mut Model, _update: Update) {
             });
             let res = ui.add(egui::TextEdit::singleline(&mut settings.variables_buffer).char_limit(1));
             if ui.input(|i| i.key_pressed(egui::Key::Enter)) && settings.variables_buffer.len() == 1 {
-                let c = settings.variables_buffer.chars().next().unwrap();
+                let c = settings.variables_buffer.get(0..1).unwrap().to_string();
                 if !model.lsys_input.variables.contains(&c) {
-                    model.lsys_input.variables.push(settings.variables_buffer.chars().next().unwrap());
+                    model.lsys_input.variables.push(c);
                 }
                 settings.variables_buffer.clear();
                 res.request_focus();
@@ -231,16 +251,38 @@ fn update(app: &App, model: &mut Model, _update: Update) {
         });
 
         ui.vertical(|ui| {
-            for (key, val) in model.lsys_input.rules.iter_mut() {
+            for (idx, (ref mut key, val)) in model.lsys_input.rules.iter_mut().enumerate() {
                 ui.horizontal(|ui| {
-                    ui.label(format!("{key}"));
+                    ComboBox::from_id_source(idx)
+                    .selected_text(format!("{}", key))
+                    .show_ui(ui, |ui| {
+                        ui.visuals_mut().selection.bg_fill = Color32::from_rgb(60, 5, 20);
+                        for var in model.lsys_input.variables.iter() {
+                            ui.selectable_value(key, var.to_string(), var);
+                        }
+                    });
                     ui.text_edit_singleline(val);
+                    if ui.button("-").clicked() {
+                        // model.lsys_input.rules.remove(idx);
+                    }
                 });
             }
-            if ui.button("+").clicked() {
-                // placeholder
-                model.lsys_input.rules.push(('A', "A".to_string()));
-            }
+            ui.horizontal(|ui| {
+                ComboBox::from_id_source("add-new")
+                .selected_text(format!("{}", settings.new_rule_buffer.0))
+                .show_ui(ui, |ui| {
+                    ui.visuals_mut().selection.bg_fill = Color32::from_rgb(60, 5, 20);
+                    for var in model.lsys_input.variables.iter() {
+                        ui.selectable_value(&mut settings.new_rule_buffer.0, var.to_string(), var);
+                    }
+                });
+                ui.text_edit_singleline(&mut settings.new_rule_buffer.1);
+                if ui.button("+").clicked() {
+                    // placeholder
+                    model.lsys_input.rules.push(settings.new_rule_buffer.clone());
+                    settings.new_rule_buffer = str_tup!("", "");
+                }
+            });
         });
 
         ui.separator();
@@ -340,7 +382,7 @@ fn view(app: &App, model: &Model, frame: Frame){
     let mut rules = HashMap::new();
 
     model.lsys_input.rules.iter().for_each(|(k, v)| {
-        rules.insert(*k, v.to_string());
+        rules.insert(k.to_string(), v.to_string());
     });
 
     let lsystem = LSystem::new(

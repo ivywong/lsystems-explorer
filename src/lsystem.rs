@@ -6,13 +6,13 @@ use crate::turtle::Turtle;
 
 pub struct LSystem {
     pub start: String,
-    pub rules: HashMap<char, String>,
+    pub rules: HashMap<String, String>,
     pub length: u32,
     pub angle: f32,
 }
 
 impl LSystem {
-    pub fn new(start: &str, rules: HashMap<char, String>, length: u32, angle: f32) -> LSystem {
+    pub fn new(start: &str, rules: HashMap<String, String>, length: u32, angle: f32) -> LSystem {
         LSystem {
             start: start.to_string(),
             rules,
@@ -41,7 +41,7 @@ impl LSystem {
         let mut res = String::from("");
         for c in input.chars() {
             match c {
-                c if self.rules.contains_key(&c) => res.push_str(self.rules.get(&c).unwrap()),
+                c if self.rules.contains_key(&c.to_string()) => res.push_str(self.rules.get(&c.to_string()).unwrap()),
                 _ => res.push(c)
             }
         }
@@ -55,7 +55,7 @@ impl LSystem {
         for c in input.chars() {
             match c {
                 'X' => continue,
-                c if self.rules.contains_key(&c) => {
+                c if self.rules.contains_key(&c.to_string()) => {
                     points.last_mut().unwrap().push(turtle.fd(self.length as f32 * scale))
                 },
                 '+' => turtle.left(self.angle),
