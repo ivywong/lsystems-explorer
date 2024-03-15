@@ -180,13 +180,14 @@ fn update(app: &App, model: &mut Model, _update: Update) {
 
         ui.horizontal(|ui| {
             ui.label("Preset: ");
-            ComboBox::from_label(format!("{}", &settings.default_preset))
-            .show_ui(ui, |ui| {
-                ui.visuals_mut().selection.bg_fill = Color32::from_rgb(60, 5, 20);
-                for (key, _) in model.presets.iter() {
-                    ui.selectable_value(&mut settings.default_preset, key.clone(), key);
-                }
-            });
+            ComboBox::from_label("")
+                .selected_text(format!("{}", &settings.default_preset))
+                .show_ui(ui, |ui| {
+                    ui.visuals_mut().selection.bg_fill = Color32::from_rgb(60, 5, 20);
+                    for (key, _) in model.presets.iter() {
+                        ui.selectable_value(&mut settings.default_preset, key.clone(), key);
+                    }
+                });
             if ui.button("load preset").clicked() {
                 let preset = model.presets.get(&settings.default_preset).unwrap();
                 model.lsys_input = preset.lsystem.clone();
