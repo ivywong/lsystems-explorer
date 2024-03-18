@@ -40,6 +40,7 @@ struct Settings {
     variables_buffer: String,
     new_rule_buffer: (String, String, u64),
     seed: u64,
+    hide_ui: bool,
 }
 
 #[derive(Clone)]
@@ -79,6 +80,7 @@ fn main() {
 fn model(app: &App) -> Model {
     let window_id = app.new_window()
         .event(event)
+        .key_pressed(key_pressed)
         .view(view)
         .raw_event(raw_window_event)
         .build()
@@ -175,6 +177,7 @@ fn model(app: &App) -> Model {
             variables_buffer: String::from(""),
             new_rule_buffer: ("".to_string(), "".to_string(), 1),
             seed: random(),
+            hide_ui: false,
         },
         lsys_input: preset.lsystem.clone(),
         presets,
@@ -218,6 +221,10 @@ fn update(app: &App, model: &mut Model, _update: Update) {
     }
 
     let used_vars: Vec<String> = model.lsys_input.rules.clone().into_iter().map(|(k, _, _)| k).collect();
+
+    if settings.hide_ui {
+        return;
+    }
 
     window.show(&ctx, |ui| {
         ui.visuals_mut().extreme_bg_color = Color32::from_rgb(5, 5, 5);
@@ -397,6 +404,17 @@ fn update(app: &App, model: &mut Model, _update: Update) {
             }
         });
     });
+}
+
+fn key_pressed(app: &App, model: &mut Model, key: Key) {
+    if key == Key::S && (app.keys.mods.ctrl() || app.keys.mods.logo()) {
+        let timestamp = std::time::UNIX_EPOCH.elapsed().unwrap().as_secs();
+        let filename = format!("{}-{}.png", app.exe_name().unwrap(), timestamp);
+        println!("taking snapshot: {}", filename);
+        app.main_window().capture_frame(filename);
+    } else if key == Key::H && app.keys.mods.alt() {
+        model.settings.hide_ui = !model.settings.hide_ui;
+    }
 }
 
 fn event(app: &App, model: &mut Model, event: WindowEvent) {
