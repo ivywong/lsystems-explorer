@@ -8,14 +8,14 @@ use crate::turtle::Turtle;
 
 pub struct LSystem {
     pub start: String,
-    pub rules: HashMap<String, Vec<(String, u8)>>,
+    pub rules: HashMap<String, Vec<(String, u64)>>,
     pub length: u32,
     pub angle: f32,
     rng: ChaCha12Rng,
 }
 
 impl LSystem {
-    pub fn new(start: &str, rules: HashMap<String, Vec<(String, u8)>>, length: u32, angle: f32, seed: u64) -> LSystem {
+    pub fn new(start: &str, rules: HashMap<String, Vec<(String, u64)>>, length: u32, angle: f32, seed: u64) -> LSystem {
         LSystem {
             start: start.to_string(),
             rules,

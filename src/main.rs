@@ -38,14 +38,14 @@ struct Settings {
     clear_bg: bool,
     default_preset: String,
     variables_buffer: String,
-    new_rule_buffer: (String, String),
+    new_rule_buffer: (String, String, u64),
     seed: u64,
 }
 
 #[derive(Clone)]
 struct LSystemInput {
     variables: Vec<String>,
-    rules: Vec<(String, String)>,
+    rules: Vec<(String, String, u64)>,
     start: String,
 }
 
@@ -96,8 +96,8 @@ fn model(app: &App) -> Model {
             lsystem: LSystemInput {
             start: "F-G-G".to_string(),
             rules: vec![
-                str_tup!("F", "F-G+F+G-F"),
-                str_tup!("G", "GG"),
+                ("F".to_string(), "F-G+F+G-F".to_string(), 1),
+                ("G".to_string(), "GG".to_string(), 1),
             ],
             variables: vec!["F".to_string(), 'G'.to_string()],
         }}),
@@ -108,8 +108,8 @@ fn model(app: &App) -> Model {
             lsystem: LSystemInput {
             start: "F".to_string(),
             rules: vec![
-                str_tup!("F", "F+G"),
-                str_tup!("G", "F-G"),
+                ("F".to_string(), "F+G".to_string(), 1),
+                ("G".to_string(), "F-G".to_string(), 1),
             ],
             variables: vec![str!('F'), str!('G')],
         }}),
@@ -120,8 +120,8 @@ fn model(app: &App) -> Model {
             lsystem: LSystemInput {
             start: "X".to_string(),
             rules: vec![
-                str_tup!("X", "F+[[X]-X]-F[-FX]+X"),
-                str_tup!("F", "FF"),
+                ("X".to_string(), "F+[[X]-X]-F[-FX]+X".to_string(), 1),
+                ("F".to_string(), "FF".to_string(), 1),
             ],
             variables: vec![str!('X'), str!('F')],
         }}),
@@ -132,8 +132,8 @@ fn model(app: &App) -> Model {
             lsystem: LSystemInput {
             start: "A".to_string(),
             rules: vec![
-                str_tup!("A", "B[+A]-A"),
-                str_tup!("B", "BB"),
+                ("A".to_string(), "B[+A]-A".to_string(), 1),
+                ("B".to_string(), "BB".to_string(), 1),
             ],
             variables: vec![str!('A'), str!('B')],
         }}),
@@ -144,9 +144,9 @@ fn model(app: &App) -> Model {
             lsystem: LSystemInput {
             start: "F".to_string(),
             rules: vec![
-                str_tup!("F", "F[+F]F[-F]F"),
-                str_tup!("F", "F[+F]F"),
-                str_tup!("F", "F[-F]F"),
+                ("F".to_string(), "F[+F]F[-F]F".to_string(), 1),
+                ("F".to_string(), "F[+F]F".to_string(), 1),
+                ("F".to_string(), "F[-F]F".to_string(), 1),
             ],
             variables: vec![str!('F')],
         }}),
@@ -173,7 +173,7 @@ fn model(app: &App) -> Model {
             clear_bg: true,
             default_preset,
             variables_buffer: String::from(""),
-            new_rule_buffer: str_tup!("", ""),
+            new_rule_buffer: ("".to_string(), "".to_string(), 1),
             seed: random(),
         },
         lsys_input: preset.lsystem.clone(),
@@ -183,9 +183,11 @@ fn model(app: &App) -> Model {
 
 // workaround for int edit field
 // https://github.com/emilk/egui/issues/1348#issuecomment-1652168882
-fn integer_edit_field(ui: &mut egui::Ui, value: &mut u64) -> egui::Response {
+fn integer_edit_field(ui: &mut egui::Ui, value: &mut u64, width: f32) -> egui::Response {
     let mut tmp_value = format!("{}", value);
-    let res = ui.text_edit_singleline(&mut tmp_value);
+    let res = egui::TextEdit::singleline(&mut tmp_value)
+        .desired_width(width)
+        .show(ui).response;
     if let Ok(result) = tmp_value.parse() {
         *value = result;
     } else if tmp_value == "" {
@@ -215,7 +217,7 @@ fn update(app: &App, model: &mut Model, _update: Update) {
         settings.angle = map_range(sine, -1.0, 1.0, 60.0, 100.0);
     }
 
-    let used_vars: Vec<String> = model.lsys_input.rules.clone().into_iter().map(|(k, _)| k).collect();
+    let used_vars: Vec<String> = model.lsys_input.rules.clone().into_iter().map(|(k, _, _)| k).collect();
 
     window.show(&ctx, |ui| {
         ui.visuals_mut().extreme_bg_color = Color32::from_rgb(5, 5, 5);
@@ -281,11 +283,12 @@ fn update(app: &App, model: &mut Model, _update: Update) {
             ui.text_edit_singleline(&mut model.lsys_input.start);
         });
 
-        ui.label("Rules:");
+        ui.separator();
 
         ui.horizontal(|ui| {
             ui.vertical(|ui| {
-                for (idx, (key, _)) in model.lsys_input.rules.iter_mut().enumerate() {
+                ui.label("Variable");
+                for (idx, (key, _, _)) in model.lsys_input.rules.iter_mut().enumerate() {
                     ComboBox::from_id_source(idx)
                     .selected_text(format!("{}", key))
                     .show_ui(ui, |ui| {
@@ -297,11 +300,19 @@ fn update(app: &App, model: &mut Model, _update: Update) {
                 }
             });
             ui.vertical(|ui| {
-                for (_, val) in model.lsys_input.rules.iter_mut() {
+                ui.label("Replacement Rule");
+                for (_, val, _) in model.lsys_input.rules.iter_mut() {
                     ui.text_edit_singleline(val);
                 }
             });
             ui.vertical(|ui| {
+                ui.label("Weight");
+                for (_, _, weight) in model.lsys_input.rules.iter_mut() {
+                    integer_edit_field(ui, weight, 40.0);
+                }
+            });
+            ui.vertical(|ui| {
+                ui.add_space(18.0);
                 for (idx, _) in model.lsys_input.rules.clone().iter().enumerate() {
                     if ui.button("-").clicked() {
                         model.lsys_input.rules.remove(idx);
@@ -322,7 +333,7 @@ fn update(app: &App, model: &mut Model, _update: Update) {
             ui.text_edit_singleline(&mut settings.new_rule_buffer.1);
             if ui.button("+").clicked() {
                 model.lsys_input.rules.push(settings.new_rule_buffer.clone());
-                settings.new_rule_buffer = str_tup!("", "");
+                settings.new_rule_buffer = ("".to_string(), "".to_string(), 1);
             }
         });
 
@@ -380,7 +391,7 @@ fn update(app: &App, model: &mut Model, _update: Update) {
 
         ui.horizontal(|ui| {
             ui.label(format!("seed: "));
-            integer_edit_field(ui, &mut settings.seed);
+            integer_edit_field(ui, &mut settings.seed, 200.0);
             if ui.button("randomize").clicked() {
                 settings.seed = random();
             }
@@ -430,11 +441,11 @@ fn view(app: &App, model: &Model, frame: Frame){
     }
 
     let draw = app.draw();
-    let mut rules: HashMap<String, Vec<(String, u8)>> = HashMap::new();
+    let mut rules: HashMap<String, Vec<(String, u64)>> = HashMap::new();
 
-    model.lsys_input.rules.iter().for_each(|(k, v)| {
+    model.lsys_input.rules.iter().for_each(|(k, v, weight)| {
         let r = rules.entry(k.to_string());
-        r.or_default().push((v.to_string(), 1));
+        r.or_default().push((v.to_string(), *weight));
     });
 
     let mut lsystem = LSystem::new(
