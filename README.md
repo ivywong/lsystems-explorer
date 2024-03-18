@@ -21,7 +21,7 @@ cargo run --release
 
 ### sliders!
 
-![](https://imgur.com/jGidrz2.gif)
+![](/docs/lsystems-demo-dragon.gif)
 
 ### interactive rules editor
 
@@ -29,11 +29,11 @@ cargo run --release
 
 ### stochastic l-system support
 
-![](https://imgur.com/4AsRyQ2.gif)
+![](/docs/lsystems-stochastic-min.gif)
 
 ### and some other fun options :)
 
-![](https://imgur.com/v8nuwYb.gif)
+![](/docs/lsystems-smear.png)
 
 ## thanks...
 
