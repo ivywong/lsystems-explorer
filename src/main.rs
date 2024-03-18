@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use lsystem::LSystem;
 use nannou::prelude::*;
+use rand::prelude::random;
 use nannou_egui::{self, egui::{self, epaint::Shadow, Align2, Color32, ComboBox, RichText, Rounding}, Egui};
 
 mod turtle;
@@ -38,6 +39,7 @@ struct Settings {
     default_preset: String,
     variables_buffer: String,
     new_rule_buffer: (String, String),
+    seed: u64,
 }
 
 #[derive(Clone)]
@@ -69,7 +71,7 @@ struct Model {
 
 fn main() {
     nannou::app(model)
-        .loop_mode(LoopMode::rate_fps(90.0))
+        // .loop_mode(LoopMode::loop_once())
         .update(update)
         .run();
 }
@@ -124,7 +126,7 @@ fn model(app: &App) -> Model {
             variables: vec![str!('X'), str!('F')],
         }}),
         ("binary tree".to_string(), Preset {
-            level: 1,
+            level: 6,
             length: 10,
             angle: 45.0,
             lsystem: LSystemInput {
@@ -135,9 +137,22 @@ fn model(app: &App) -> Model {
             ],
             variables: vec![str!('A'), str!('B')],
         }}),
+        ("stochastic plant".to_string(), Preset {
+            level: 6,
+            length: 10,
+            angle: 25.0,
+            lsystem: LSystemInput {
+            start: "F".to_string(),
+            rules: vec![
+                str_tup!("F", "F[+F]F[-F]F"),
+                str_tup!("F", "F[+F]F"),
+                str_tup!("F", "F[-F]F"),
+            ],
+            variables: vec![str!('F')],
+        }}),
     ]);
 
-    let default_preset = "dragon".to_string();
+    let default_preset = "stochastic plant".to_string();
     let preset = presets.get(&default_preset).unwrap();
 
     Model {
@@ -159,10 +174,24 @@ fn model(app: &App) -> Model {
             default_preset,
             variables_buffer: String::from(""),
             new_rule_buffer: str_tup!("", ""),
+            seed: random(),
         },
         lsys_input: preset.lsystem.clone(),
         presets,
     }
+}
+
+// workaround for int edit field
+// https://github.com/emilk/egui/issues/1348#issuecomment-1652168882
+fn integer_edit_field(ui: &mut egui::Ui, value: &mut u64) -> egui::Response {
+    let mut tmp_value = format!("{}", value);
+    let res = ui.text_edit_singleline(&mut tmp_value);
+    if let Ok(result) = tmp_value.parse() {
+        *value = result;
+    } else if tmp_value == "" {
+        *value = 0;
+    }
+    res
 }
 
 fn update(app: &App, model: &mut Model, _update: Update) {
@@ -261,7 +290,7 @@ fn update(app: &App, model: &mut Model, _update: Update) {
                     .selected_text(format!("{}", key))
                     .show_ui(ui, |ui| {
                         ui.visuals_mut().selection.bg_fill = Color32::from_rgb(60, 5, 20);
-                        for var in model.lsys_input.variables.iter().filter(|v| !used_vars.contains(v)) {
+                        for var in model.lsys_input.variables.iter() {
                             ui.selectable_value(key, var.to_string(), var);
                         }
                     });
@@ -286,7 +315,7 @@ fn update(app: &App, model: &mut Model, _update: Update) {
             .selected_text(format!("{}", settings.new_rule_buffer.0))
             .show_ui(ui, |ui| {
                 ui.visuals_mut().selection.bg_fill = Color32::from_rgb(60, 5, 20);
-                for var in model.lsys_input.variables.iter().filter(|v| !used_vars.contains(v)) {
+                for var in model.lsys_input.variables.iter() {
                     ui.selectable_value(&mut settings.new_rule_buffer.0, var.to_string(), var);
                 }
             });
@@ -346,6 +375,16 @@ fn update(app: &App, model: &mut Model, _update: Update) {
             }
             ui.checkbox(&mut settings.clear_bg, "clear bg?");
         });
+
+        ui.separator();
+
+        ui.horizontal(|ui| {
+            ui.label(format!("seed: "));
+            integer_edit_field(ui, &mut settings.seed);
+            if ui.button("randomize").clicked() {
+                settings.seed = random();
+            }
+        });
     });
 }
 
@@ -391,17 +430,19 @@ fn view(app: &App, model: &Model, frame: Frame){
     }
 
     let draw = app.draw();
-    let mut rules = HashMap::new();
+    let mut rules: HashMap<String, Vec<(String, u8)>> = HashMap::new();
 
     model.lsys_input.rules.iter().for_each(|(k, v)| {
-        rules.insert(k.to_string(), v.to_string());
+        let r = rules.entry(k.to_string());
+        r.or_default().push((v.to_string(), 1));
     });
 
-    let lsystem = LSystem::new(
+    let mut lsystem = LSystem::new(
         &model.lsys_input.start,
         rules,
         model.settings.length,
         model.settings.angle,
+        model.settings.seed,
     );
 
     for section_points in lsystem.draw(model.settings.level, model.settings.scale) {
