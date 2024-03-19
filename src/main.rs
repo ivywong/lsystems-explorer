@@ -111,12 +111,12 @@ fn model(app: &App) -> Model {
             length: 10,
             angle: 25.0,
             lsystem: LSystemInput {
-            start: "X".to_string(),
+            start: "f".to_string(),
             rules: vec![
-                ("X".to_string(), "F+[[X]-X]-F[-FX]+X".to_string(), 1),
+                ("f".to_string(), "F+[[f]-f]-F[-Ff]+f".to_string(), 1),
                 ("F".to_string(), "FF".to_string(), 1),
             ],
-            variables: vec![str!('X'), str!('F')],
+            variables: vec![str!('f'), str!('F')],
         }}),
         ("binary tree".to_string(), Preset {
             level: 6,
@@ -297,10 +297,12 @@ fn update(app: &App, model: &mut Model, _update: Update) {
                     }
                 }
             });
-            let res = ui.add(egui::TextEdit::singleline(&mut settings.variables_buffer).char_limit(1));
+            let res = ui.add(egui::TextEdit::singleline(&mut settings.variables_buffer)
+                .char_limit(1)
+                .hint_text("A-Z, a-z"));
             if ui.input(|i| i.key_pressed(egui::Key::Enter)) && settings.variables_buffer.len() == 1 {
                 let c = settings.variables_buffer.get(0..1).unwrap().to_string();
-                if !model.lsys_input.variables.contains(&c) {
+                if !model.lsys_input.variables.contains(&c) && c.chars().next().unwrap().is_ascii_alphabetic() {
                     model.lsys_input.variables.push(c);
                 }
                 settings.variables_buffer.clear();

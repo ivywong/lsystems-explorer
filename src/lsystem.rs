@@ -14,7 +14,7 @@ pub struct LSystem {
     rng: ChaCha12Rng,
 }
 
-pub(crate) const VALID_CHARS: [char; 5] = ['X', '+', '-', '[', ']'];
+pub(crate) const VALID_CHARS: [char; 4] = ['+', '-', '[', ']'];
 
 impl LSystem {
     pub fn new(start: &str, rules: HashMap<String, Vec<(String, u64)>>, length: u32, angle: f32, seed: u64) -> LSystem {
@@ -71,10 +71,12 @@ impl LSystem {
 
         for c in input.chars() {
             match c {
-                'X' => continue,
-                c if self.rules.contains_key(&c.to_string()) => {
+                c if c.is_ascii_uppercase() => {
                     points.last_mut().unwrap().push(turtle.fd(self.length as f32 * scale))
-                },
+                }
+                c if c.is_ascii_lowercase() => {
+                    turtle.fd(self.length as f32 * scale);
+                }
                 '+' => turtle.left(self.angle),
                 '-' => turtle.right(self.angle),
                 '[' => turtle.push(),
