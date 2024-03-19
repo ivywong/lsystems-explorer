@@ -14,6 +14,8 @@ pub struct LSystem {
     rng: ChaCha12Rng,
 }
 
+pub(crate) const VALID_CHARS: [char; 5] = ['X', '+', '-', '[', ']'];
+
 impl LSystem {
     pub fn new(start: &str, rules: HashMap<String, Vec<(String, u64)>>, length: u32, angle: f32, seed: u64) -> LSystem {
         LSystem {
@@ -80,7 +82,7 @@ impl LSystem {
                     Ok(pos) => points.push(vec![pos]),
                     Err(err) => println!("{}", err),
                 },
-                _ => println!("Malformed input: {}", c),
+                _ => {},
             }
         }
         points

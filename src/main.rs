@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use lsystem::LSystem;
 use nannou::prelude::*;
 use rand::prelude::random;
-use nannou_egui::{self, egui::{self, epaint::Shadow, Align2, Color32, ComboBox, RichText, Rounding}, Egui};
+use nannou_egui::{self, egui::{self, epaint::Shadow, Align2, Color32, ComboBox, RichText, Rounding, TextFormat}, Egui};
 
 mod turtle;
 mod lsystem;
@@ -14,15 +14,6 @@ macro_rules! str {
     };
     ($x:expr $(,)?) => {
         ToString::to_string(&$x)
-    };
-}
-
-macro_rules! str_tup {
-    () => {
-        (String::new())
-    };
-    ($x:expr, $y:expr) => {
-        (ToString::to_string(&$x), ToString::to_string(&$y))
     };
 }
 
@@ -199,6 +190,38 @@ fn integer_edit_field(ui: &mut egui::Ui, value: &mut u64, width: f32) -> egui::R
     res
 }
 
+fn rules_error_highlighter(rule: &str, variables: Vec<String>) -> egui::text::LayoutJob {
+    use egui::text::LayoutJob;
+    let mut job = LayoutJob::default();
+
+    let error_color = Color32::RED;
+
+    for c in rule.chars() {
+        if !variables.contains(&c.to_string()) && !lsystem::VALID_CHARS.contains(&c) {
+            job.append(&c.to_string(), 0.0, TextFormat {
+                color: error_color,
+                ..Default::default()
+            });
+        } else {
+            job.append(&c.to_string(), 0.0, TextFormat {
+                ..Default::default()
+            });
+        }
+    }
+
+    job
+}
+
+fn rule_edit_field(ui: &mut egui::Ui, value: &mut String, variables: Vec<String>) -> egui::Response {
+    let mut layouter  = |ui: &egui::Ui, string: &str, wrap_width: f32| {
+        let mut layout_job: egui::text::LayoutJob = rules_error_highlighter(string, variables.clone());
+        layout_job.wrap.max_width = wrap_width;
+        ui.fonts(|f| f.layout_job(layout_job))
+    };
+
+    ui.add(egui::TextEdit::singleline(value).layouter(&mut layouter))
+}
+
 fn update(app: &App, model: &mut Model, _update: Update) {
     let egui = &mut model.egui;
     let settings = &mut model.settings;
@@ -287,7 +310,7 @@ fn update(app: &App, model: &mut Model, _update: Update) {
 
         ui.horizontal(|ui| {
             ui.label("Start: ");
-            ui.text_edit_singleline(&mut model.lsys_input.start);
+            rule_edit_field(ui, &mut model.lsys_input.start, model.lsys_input.variables.clone());
         });
 
         ui.separator();
@@ -309,7 +332,7 @@ fn update(app: &App, model: &mut Model, _update: Update) {
             ui.vertical(|ui| {
                 ui.label("Replacement Rule");
                 for (_, val, _) in model.lsys_input.rules.iter_mut() {
-                    ui.text_edit_singleline(val);
+                    rule_edit_field(ui, val, model.lsys_input.variables.clone());
                 }
             });
             ui.vertical(|ui| {
@@ -328,21 +351,10 @@ fn update(app: &App, model: &mut Model, _update: Update) {
             });
         });
 
-        ui.horizontal(|ui| {
-            ComboBox::from_id_source("add-new")
-            .selected_text(format!("{}", settings.new_rule_buffer.0))
-            .show_ui(ui, |ui| {
-                ui.visuals_mut().selection.bg_fill = Color32::from_rgb(60, 5, 20);
-                for var in model.lsys_input.variables.iter() {
-                    ui.selectable_value(&mut settings.new_rule_buffer.0, var.to_string(), var);
-                }
-            });
-            ui.text_edit_singleline(&mut settings.new_rule_buffer.1);
-            if ui.button("+").clicked() {
-                model.lsys_input.rules.push(settings.new_rule_buffer.clone());
-                settings.new_rule_buffer = ("".to_string(), "".to_string(), 1);
-            }
-        });
+        if ui.button("+").clicked() {
+            model.lsys_input.rules.push(settings.new_rule_buffer.clone());
+            settings.new_rule_buffer = ("".to_string(), "".to_string(), 1);
+        }
 
         ui.separator();
 
